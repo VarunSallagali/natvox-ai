@@ -1,0 +1,9 @@
+torch
+torchaudio
+numpy
+librosa
+matplotlib
+streamlit
+resemblyzer
+pydub
+scipy

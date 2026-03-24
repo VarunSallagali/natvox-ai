@@ -1,0 +1,42 @@
+# Virtual environment
+venv310/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Model files
+*.pt
+*.pth
+adapted_embedding.pt
+natvox_model.pth
+
+# Temporary audio files
+*.wav
+*.m4a
+temp.wav
+temp.m4a
+converted.wav
+sample.wav
+
+# Generated files
+loss_curve.png
+results.txt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
