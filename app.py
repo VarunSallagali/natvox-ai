@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 import time
 import io
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +17,6 @@ from pydub import AudioSegment
 from audio_utils import get_embedding
 from config import ARTIFACTS_DIR, SUPPORTED_AUDIO_EXTENSIONS
 from model import NATVOXAdapter
-from live_audio import LiveAudioProcessor, get_available_input_devices
 from voice_conversion import apply_preset, convert_audio, get_preset_list, get_preset_description
 from viz_utils import (
     plot_waveform_comparison, 
@@ -26,6 +26,15 @@ from viz_utils import (
     create_metric_cards,
     create_comparison_section
 )
+
+# Conditional import for live audio (may not be available on Streamlit Cloud)
+LIVE_AUDIO_AVAILABLE = False
+try:
+    from live_audio import LiveAudioProcessor, get_available_input_devices
+    LIVE_AUDIO_AVAILABLE = True
+except (ImportError, OSError):
+    # PortAudio not available (common on Streamlit Cloud)
+    pass
 
 
 DEFAULT_ARTIFACTS = ARTIFACTS_DIR
@@ -101,18 +110,20 @@ st.caption("Professional Voice Adaptation & Embedding Alignment Platform")
 
 with st.sidebar:
     st.header("🧭 Navigation")
-    page = st.radio(
-        "Go to",
-        [
-            "🏠 Overview", 
-            "🎯 Voice Conversion",
-            "📊 Training", 
-            "📈 Results", 
-            "🔬 Inference Lab", 
-            "🎤 Live Inference",
-            "⚙️ Dataset Setup"
-        ],
-    )
+    nav_options = [
+        "🏠 Overview", 
+        "🎯 Voice Conversion",
+        "📊 Training", 
+        "📈 Results", 
+        "🔬 Inference Lab",
+        "⚙️ Dataset Setup"
+    ]
+    
+    # Add live inference only if available
+    if LIVE_AUDIO_AVAILABLE:
+        nav_options.insert(5, "🎤 Live Inference")
+    
+    page = st.radio("Go to", nav_options)
     st.divider()
     artifacts_dir = Path(
         st.text_input("Artifacts directory", str(DEFAULT_ARTIFACTS))
@@ -489,114 +500,123 @@ elif page == "🔬 Inference Lab":
             st.error(f"❌ Inference failed: {exc}")
 
 elif page == "🎤 Live Inference":
-    st.subheader("🎤 Live Audio Adaptation")
-    st.write(
-        """
-        Stream audio in real-time from your microphone and see embedding adaptations 
-        and similarity metrics update live. This uses the trained NATVOX adapter to 
-        transform your audio embeddings from synthetic to natural manifold.
-        """
-    )
-    
-    # Model selection
-    model_path_input = st.text_input(
-        "Model checkpoint path", value=str(artifacts_dir / "natvox_model.pth")
-    )
-    
-    model_path = Path(model_path_input)
-    if not model_path.exists():
-        st.error(f"❌ Checkpoint not found: {model_path}")
-        st.info("Train a model first or provide a valid checkpoint path")
-        st.stop()
-    
-    # Audio device selection
-    st.write("**Audio Device Configuration**")
-    col1, col2 = st.columns(2)
-    
-    input_devices = get_available_input_devices()
-    if not input_devices:
-        st.error("❌ No input devices found!")
-        st.stop()
-    
-    device_names = list(input_devices.keys())
-    default_device = device_names[0] if device_names else None
-    selected_input = col1.selectbox("Input device", device_names, index=0)
-    input_device_id = input_devices[selected_input]
-    
-    # Parameters
-    col1, col2 = st.columns(2)
-    buffer_duration = col1.slider(
-        "Buffer duration (seconds)", 
-        min_value=0.5, 
-        max_value=5.0, 
-        value=2.0, 
-        step=0.5
-    )
-    session_duration = col2.slider(
-        "Session duration (seconds, 0=infinite)", 
-        min_value=0, 
-        max_value=300, 
-        value=0, 
-        step=10
-    )
-    
-    # Live inference section
-    if st.button("🔴 Start Live Inference", type="primary"):
-        # Load model
-        @st.cache_resource
-        def load_live_model(path):
-            m = NATVOXAdapter()
-            m.load_state_dict(torch.load(path, map_location="cpu"))
-            m.eval()
-            return m
-        
-        model = load_live_model(str(model_path))
-        
-        # Create placeholder for live metrics
-        metrics_placeholder = st.empty()
-        chart_placeholder = st.empty()
-        status_placeholder = st.empty()
-        
-        # Initialize processor
-        processor = LiveAudioProcessor(
-            model, 
-            sample_rate=16000, 
-            buffer_duration=buffer_duration
+    if not LIVE_AUDIO_AVAILABLE:
+        st.error("❌ Live Audio Not Available")
+        st.warning(
+            "Live audio streaming requires PortAudio library which is not available "
+            "in this environment. This feature works best when running locally:\n\n"
+            "```bash\npython live_inference.py --checkpoint artifacts/natvox_model.pth\n```\n\n"
+            "For cloud deployment, use the **Inference Lab** tab instead."
+        )
+    else:
+        st.subheader("🎤 Live Audio Adaptation")
+        st.write(
+            """
+            Stream audio in real-time from your microphone and see embedding adaptations 
+            and similarity metrics update live. This uses the trained NATVOX adapter to 
+            transform your audio embeddings from synthetic to natural manifold.
+            """
         )
         
-        try:
-            processor.start_capture(device=input_device_id)
-            status_placeholder.success("🟢 Live inference active - listening...")
+        # Model selection
+        model_path_input = st.text_input(
+            "Model checkpoint path", value=str(artifacts_dir / "natvox_model.pth")
+        )
+        
+        model_path = Path(model_path_input)
+        if not model_path.exists():
+            st.error(f"❌ Checkpoint not found: {model_path}")
+            st.info("Train a model first or provide a valid checkpoint path")
+            st.stop()
+        
+        # Audio device selection
+        st.write("**Audio Device Configuration**")
+        col1, col2 = st.columns(2)
+        
+        input_devices = get_available_input_devices()
+        if not input_devices:
+            st.error("❌ No input devices found!")
+            st.stop()
+        
+        device_names = list(input_devices.keys())
+        default_device = device_names[0] if device_names else None
+        selected_input = col1.selectbox("Input device", device_names, index=0)
+        input_device_id = input_devices[selected_input]
+        
+        # Parameters
+        col1, col2 = st.columns(2)
+        buffer_duration = col1.slider(
+            "Buffer duration (seconds)", 
+            min_value=0.5, 
+            max_value=5.0, 
+            value=2.0, 
+            step=0.5
+        )
+        session_duration = col2.slider(
+            "Session duration (seconds, 0=infinite)", 
+            min_value=0, 
+            max_value=300, 
+            value=0, 
+            step=10
+        )
+        
+        # Live inference section
+        if st.button("🔴 Start Live Inference", type="primary"):
+            # Load model
+            @st.cache_resource
+            def load_live_model(path):
+                m = NATVOXAdapter()
+                m.load_state_dict(torch.load(path, map_location="cpu"))
+                m.eval()
+                return m
             
-            similarities = []
-            timestamps = []
-            start_time = time.time()
-            chunk_count = 0
+            model = load_live_model(str(model_path))
             
-            # Live update loop
-            while True:
-                # Check if duration exceeded
-                if session_duration > 0 and (time.time() - start_time) > session_duration:
-                    status_placeholder.info("⏹️ Session duration reached, stopped.")
-                    break
+            # Create placeholder for live metrics
+            metrics_placeholder = st.empty()
+            chart_placeholder = st.empty()
+            status_placeholder = st.empty()
+            
+            # Initialize processor
+            processor = LiveAudioProcessor(
+                model, 
+                sample_rate=16000, 
+                buffer_duration=buffer_duration
+            )
+            
+            try:
+                processor.start_capture(device=input_device_id)
+                status_placeholder.success("🟢 Live inference active - listening...")
                 
-                # Get latest results
-                result = processor.get_latest_results(timeout=0.5)
+                similarities = []
+                timestamps = []
+                start_time = time.time()
+                chunk_count = 0
                 
-                if result:
-                    chunk_count += 1
-                    similarities.append(result['similarity'])
-                    timestamps.append(len(timestamps))
+                # Live update loop
+                while True:
+                    # Check if duration exceeded
+                    if session_duration > 0 and (time.time() - start_time) > session_duration:
+                        status_placeholder.info("⏹️ Session duration reached, stopped.")
+                        break
                     
-                    # Update metrics
-                    metrics = processor.get_metrics_summary()
+                    # Get latest results
+                    result = processor.get_latest_results(timeout=0.5)
                     
-                    col1, col2, col3, col4 = st.columns(4)
-                    with metrics_placeholder.container():
-                        col1.metric("Current Similarity", f"{result['similarity']:.4f}")
-                        col2.metric("Average Similarity", f"{metrics['avg_similarity']:.4f}")
-                        col3.metric("Chunks Processed", metrics['chunks_processed'])
-                        col4.metric("Input RMS", f"{result['rms']:.4f}")
+                    if result:
+                        chunk_count += 1
+                        similarities.append(result['similarity'])
+                        timestamps.append(len(timestamps))
+                        
+                        # Update metrics
+                        metrics = processor.get_metrics_summary()
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with metrics_placeholder.container():
+                            col1.metric("Current Similarity", f"{result['similarity']:.4f}")
+                            col2.metric("Average Similarity", f"{metrics['avg_similarity']:.4f}")
+                            col3.metric("Chunks Processed", metrics['chunks_processed'])
+                            col4.metric("Input RMS", f"{result['rms']:.4f}")
                     
                     # Update chart
                     if similarities:
