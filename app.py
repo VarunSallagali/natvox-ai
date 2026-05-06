@@ -634,48 +634,48 @@ elif page == "🎤 Live Inference":
                     time.sleep(0.2)
             
             except KeyboardInterrupt:
-            status_placeholder.warning("⏸️ Stopped by user")
-        except Exception as e:
-            status_placeholder.error(f"❌ Error: {e}")
-        finally:
-            processor.stop_capture()
-            
-            # Final summary
-            if similarities:
-                final_metrics = processor.get_metrics_summary()
-                st.success("📊 Session Complete")
+                status_placeholder.warning("⏸️ Stopped by user")
+            except Exception as e:
+                status_placeholder.error(f"❌ Error: {e}")
+            finally:
+                processor.stop_capture()
                 
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Total Chunks", final_metrics['chunks_processed'])
-                col2.metric("Avg Similarity", f"{final_metrics['avg_similarity']:.4f}")
-                col3.metric("Min/Max", f"{final_metrics['min_similarity']:.4f} / {final_metrics['max_similarity']:.4f}")
-                col4.metric("Std Dev", f"{final_metrics['std_similarity']:.4f}")
-                
-                # Distribution visualization
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-                
-                # Histogram
-                ax1.hist(similarities, bins=20, color='#2ECC71', alpha=0.7, edgecolor='black')
-                ax1.axvline(np.mean(similarities), color='red', linestyle='--', linewidth=2, label='Mean')
-                ax1.set_xlabel("Similarity")
-                ax1.set_ylabel("Frequency")
-                ax1.set_title("Similarity Distribution")
-                ax1.legend()
-                
-                # Time series with statistics
-                ax2.plot(timestamps, similarities, marker='o', linestyle='-', label='Similarity')
-                ax2.axhline(y=np.mean(similarities), color='r', linestyle='--', label='Mean')
-                ax2.fill_between(
-                    timestamps, 
-                    np.mean(similarities) - np.std(similarities),
-                    np.mean(similarities) + np.std(similarities),
-                    alpha=0.2,
-                    color='red',
-                    label='±1 Std Dev'
-                )
-                ax2.set_xlabel("Chunk")
-                ax2.set_ylabel("Similarity")
-                ax2.set_title("Similarity Over Time")
-                ax2.legend()
-                
-                st.pyplot(fig)
+                # Final summary
+                if similarities:
+                    final_metrics = processor.get_metrics_summary()
+                    st.success("📊 Session Complete")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    col1.metric("Total Chunks", final_metrics['chunks_processed'])
+                    col2.metric("Avg Similarity", f"{final_metrics['avg_similarity']:.4f}")
+                    col3.metric("Min/Max", f"{final_metrics['min_similarity']:.4f} / {final_metrics['max_similarity']:.4f}")
+                    col4.metric("Std Dev", f"{final_metrics['std_similarity']:.4f}")
+                    
+                    # Distribution visualization
+                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+                    
+                    # Histogram
+                    ax1.hist(similarities, bins=20, color='#2ECC71', alpha=0.7, edgecolor='black')
+                    ax1.axvline(np.mean(similarities), color='red', linestyle='--', linewidth=2, label='Mean')
+                    ax1.set_xlabel("Similarity")
+                    ax1.set_ylabel("Frequency")
+                    ax1.set_title("Similarity Distribution")
+                    ax1.legend()
+                    
+                    # Time series with statistics
+                    ax2.plot(timestamps, similarities, marker='o', linestyle='-', label='Similarity')
+                    ax2.axhline(y=np.mean(similarities), color='r', linestyle='--', label='Mean')
+                    ax2.fill_between(
+                        timestamps, 
+                        np.mean(similarities) - np.std(similarities),
+                        np.mean(similarities) + np.std(similarities),
+                        alpha=0.2,
+                        color='red',
+                        label='±1 Std Dev'
+                    )
+                    ax2.set_xlabel("Chunk")
+                    ax2.set_ylabel("Similarity")
+                    ax2.set_title("Similarity Over Time")
+                    ax2.legend()
+                    
+                    st.pyplot(fig)
