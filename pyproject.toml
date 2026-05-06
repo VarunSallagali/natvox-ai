@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools-scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "natvox-ai"
+version = "1.0.0"
+description = "Neural Adapter for Synthetic-to-Natural Speech Embedding Alignment"
+readme = "Readme.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Varun", email = "varun@example.com"}
+]
+
+[tool.streamlit]
+entryPoint = "app.py"
