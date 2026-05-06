@@ -630,10 +630,10 @@ elif page == "🎤 Live Inference":
                         ax.grid(True, alpha=0.3)
                         with chart_placeholder.container():
                             st.pyplot(fig)
-                
-                time.sleep(0.2)
-        
-        except KeyboardInterrupt:
+                    
+                    time.sleep(0.2)
+            
+            except KeyboardInterrupt:
             status_placeholder.warning("⏸️ Stopped by user")
         except Exception as e:
             status_placeholder.error(f"❌ Error: {e}")
