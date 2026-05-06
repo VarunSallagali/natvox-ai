@@ -18,13 +18,13 @@ VOICE_PRESETS = {
         "pitch_shift": 0,
         "speed_factor": 0.98,
         "formant_shift": 0,
-        "eq_low": 1.05,
-        "eq_mid": 1.05,
-        "eq_high": 1.3,
-        "clarity": 0.3,
-        "reverb": 0.02,
-        "compression": 0.2,
-        "description": "Clean, natural presentation with enhanced clarity"
+        "eq_low": 1.1,
+        "eq_mid": 1.15,
+        "eq_high": 1.2,
+        "clarity": 0.4,
+        "reverb": 0.05,
+        "compression": 0.3,
+        "description": "Ultra-clear, smooth natural voice with enhanced warmth"
     },
     "Deep Narrator": {
         "pitch_shift": -6,

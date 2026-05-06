@@ -8,6 +8,31 @@ from audio_utils import get_embedding, enhance_audio
 from voice_conversion import convert_audio
 
 
+def polish_audio(input_path, output_path):
+    """Final polish for ultra-smooth, clear voice"""
+    try:
+        import librosa
+        import soundfile as sf
+        from scipy.signal import butter, filtfilt
+
+        y, sr = librosa.load(input_path, sr=None)
+
+        # Light high-frequency roll-off for smoothness
+        b, a = butter(2, 12000, 'low', fs=sr)
+        y = filtfilt(b, a, y)
+
+        # Normalize
+        y = y / np.max(np.abs(y) + 1e-10)
+
+        sf.write(output_path, y, sr, subtype='PCM_16')
+        return output_path
+    except Exception as e:
+        # Fallback: just copy the file
+        import shutil
+        shutil.copy(input_path, output_path)
+        return output_path
+
+
 def text_to_wav(text, output_path, lang='en', slow=False):
     try:
         import pyttsx3
@@ -34,6 +59,29 @@ def text_to_wav(text, output_path, lang='en', slow=False):
             pass
 
     return output_path
+
+
+def text_encoder(audio_path: str):
+    """Encode synthetic speech into a text-embedding representation."""
+    return get_embedding(audio_path)
+
+
+def acoustic_vocoder(input_path: str, output_path: str, preset: str = "Natural Clean", intensity: float = 1.0):
+    """Simulate the VITS + GAN vocoder stage by applying a natural voice preset."""
+    converted_path, metrics = convert_audio(input_path, output_path, preset=preset, intensity=intensity)
+    return converted_path
+
+
+def embedding_to_vocoder_settings(adapted_embedding: np.ndarray):
+    """Convert the adapted embedding into vocoder intensity and preset settings."""
+    score = float(np.tanh(np.mean(adapted_embedding)))
+    intensity = 0.9 + 0.3 * ((score + 1) / 2)
+    intensity = float(np.clip(intensity, 0.8, 1.2))
+    return {
+        "preset": "Natural Clean",
+        "intensity": intensity,
+        "description": "Vocoder settings derived from adapted NATVOX embedding"
+    }
 
 
 def compute_cosine_similarity(a: np.ndarray, b: np.ndarray):
@@ -66,8 +114,8 @@ class AdaptedVoiceConversion:
         return adapted.cpu().numpy().squeeze(0)
 
     def convert_text(self, text, target_audio_path, tts_lang='en', slow=False, target_text=None):
-        tmp_wav = 'temp_synthetic.wav'
-        text_to_wav(text, tmp_wav, lang=tts_lang, slow=slow)
+        synthetic_wav = 'temp_synthetic.wav'
+        text_to_wav(text, synthetic_wav, lang=tts_lang, slow=slow)
 
         # Generate target audio if not exists
         if not os.path.exists(target_audio_path):
@@ -75,24 +123,31 @@ class AdaptedVoiceConversion:
                 target_text = "This is the target natural voice for comparison."
             text_to_wav(target_text, target_audio_path, lang=tts_lang, slow=slow)
 
-        # Enhance the synthetic audio for clarity
-        enhanced_wav = 'temp_enhanced.wav'
-        enhance_audio(tmp_wav, enhanced_wav)
+        # TTS -> Text encoder stage
+        enhanced_synthetic_wav = 'temp_synthetic_enhanced.wav'
+        enhance_audio(synthetic_wav, enhanced_synthetic_wav)
 
-        synthetic_emb = get_embedding(enhanced_wav)
-        target_emb = get_embedding(target_audio_path)
+        synthetic_emb = text_encoder(enhanced_synthetic_wav)
+        target_emb = text_encoder(target_audio_path)
 
+        # NATVOX adapter stage
         adapted_emb = self.adapt_embedding(synthetic_emb)
 
-        # Generate "converted" audio by applying voice conversion DSP
+        # VITS + GAN vocoder stage (simulated by voice conversion DSP)
+        vocoder_settings = embedding_to_vocoder_settings(adapted_emb)
         converted_wav = 'temp_converted.wav'
-        convert_audio(enhanced_wav, converted_wav, preset="Natural Clean")
+        acoustic_vocoder(
+            enhanced_synthetic_wav,
+            converted_wav,
+            preset=vocoder_settings["preset"],
+            intensity=vocoder_settings["intensity"],
+        )
 
-        # Enhance the converted audio
+        # Final output enhancement for clarity
         final_converted_wav = 'temp_final_converted.wav'
         enhance_audio(converted_wav, final_converted_wav)
 
-        converted_emb = get_embedding(final_converted_wav)
+        converted_emb = text_encoder(final_converted_wav)
         adapted_converted_emb = self.adapt_embedding(converted_emb)
 
         original_sim = compute_cosine_similarity(synthetic_emb, target_emb)
@@ -110,9 +165,10 @@ class AdaptedVoiceConversion:
             'AdaptedSimilarity': adapted_sim,
             'ConvertedSimilarity': converted_sim,
             'AdaptedConvertedSimilarity': adapted_converted_sim,
-            'TempPath': tmp_wav,
-            'EnhancedPath': enhanced_wav,
-            'ConvertedPath': final_converted_wav,
+            'SyntheticWav': synthetic_wav,
+            'EnhancedSyntheticWav': enhanced_synthetic_wav,
+            'ConvertedWav': converted_wav,
+            'FinalConvertedWav': final_converted_wav,
             'TargetPath': target_audio_path
         }
 

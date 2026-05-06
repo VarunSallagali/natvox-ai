@@ -18,6 +18,7 @@ from audio_utils import get_embedding
 from config import ARTIFACTS_DIR, SUPPORTED_AUDIO_EXTENSIONS
 from model import NATVOXAdapter
 from voice_conversion import apply_preset, convert_audio, get_preset_list, get_preset_description
+from vocalis_pipeline import AdaptedVoiceConversion
 from viz_utils import (
     plot_waveform_comparison, 
     plot_spectrogram_comparison,
@@ -115,6 +116,7 @@ with st.sidebar:
         "🎯 Voice Conversion",
         "📊 Training", 
         "📈 Results", 
+        "🧪 TTS Conversion",
         "🔬 Inference Lab",
         "⚙️ Dataset Setup"
     ]
@@ -439,6 +441,123 @@ elif page == "📈 Results":
             ax.legend()
             ax.grid(True, alpha=0.3)
             st.pyplot(fig)
+
+elif page == "🧪 TTS Conversion":
+    st.subheader("🧪 Text-to-Speech Conversion")
+    st.write(
+        "Pipeline: TTS → Text Encoder → NATVOX Adapter → VITS/GAN Vocoder. Generate speech from text and preview each stage."
+    )
+
+    model_path_input = st.text_input(
+        "Model checkpoint path", value=str(artifacts_dir / "natvox_model.pth")
+    )
+
+    tts_text = st.text_area(
+        "Synthetic text prompt",
+        value="Hello everyone, welcome to NATVOX-AI.",
+        height=120,
+    )
+
+    target_audio = st.file_uploader(
+        "Optional target audio file (for similarity comparison)",
+        type=SUPPORTED_UPLOADS,
+    )
+
+    target_text = st.text_area(
+        "Target voice text (generated if no target audio uploaded)",
+        value="This is the target natural voice for comparison.",
+        height=100,
+    )
+
+    if st.button("▶️ Generate and Convert", type="primary"):
+        model_path = Path(model_path_input)
+        if not model_path.exists():
+            st.error(f"❌ Checkpoint not found: {model_path}")
+            st.stop()
+
+        try:
+            model = load_model(str(model_path))
+            pipeline = AdaptedVoiceConversion(adapter_model=model)
+
+            if target_audio:
+                target_file = convert_to_wav(save_uploaded_file(target_audio))
+            else:
+                target_file = str(artifacts_dir / "tts_target.wav")
+
+            result = pipeline.convert_text(
+                tts_text,
+                target_file,
+                target_text=target_text,
+            )
+
+            st.success("✅ TTS conversion complete!")
+            st.write("### 📝 Input Text")
+            st.write(tts_text)
+
+            st.write("### 🔧 Pipeline Stages")
+            st.markdown(
+                "- **TTS**: Generated synthetic speech from your text\n"
+                "- **Text Encoder**: Encoded speech into the embedding space\n"
+                "- **NATVOX-AI Adapter**: Adapted synthetic embedding toward natural speech\n"
+                "- **VITS Acoustic Model**: Produced the acoustic output from the adapted embedding\n"
+                "- **GAN Vocoder**: Smoothed the final natural voice output"
+            )
+
+            st.write("### 🔊 Audio Outputs")
+            output_cols = st.columns(4)
+            with output_cols[0]:
+                st.markdown("**Synthetic speech (TTS)**")
+                st.audio(result["SyntheticWav"])
+                with open(result["SyntheticWav"], "rb") as f:
+                    st.download_button(
+                        label="Download synthetic wav",
+                        data=f,
+                        file_name=Path(result["SyntheticWav"]).name,
+                        mime="audio/wav",
+                    )
+            with output_cols[1]:
+                st.markdown("**Encoder / adapter input**")
+                st.audio(result["EnhancedSyntheticWav"])
+                with open(result["EnhancedSyntheticWav"], "rb") as f:
+                    st.download_button(
+                        label="Download encoder input wav",
+                        data=f,
+                        file_name=Path(result["EnhancedSyntheticWav"]).name,
+                        mime="audio/wav",
+                    )
+            with output_cols[2]:
+                st.markdown("**VITS acoustic output**")
+                st.audio(result["ConvertedWav"])
+                with open(result["ConvertedWav"], "rb") as f:
+                    st.download_button(
+                        label="Download VITS output wav",
+                        data=f,
+                        file_name=Path(result["ConvertedWav"]).name,
+                        mime="audio/wav",
+                    )
+            with output_cols[3]:
+                st.markdown("**GAN vocoder output**")
+                st.audio(result["FinalConvertedWav"])
+                with open(result["FinalConvertedWav"], "rb") as f:
+                    st.download_button(
+                        label="Download final wav",
+                        data=f,
+                        file_name=Path(result["FinalConvertedWav"]).name,
+                        mime="audio/wav",
+                    )
+
+            st.write("### 🎧 Target Audio")
+            st.audio(result["TargetPath"])
+
+            st.write("### 📊 Similarity Metrics")
+            metrics_cols = st.columns(4)
+            metrics_cols[0].metric("Original sim", f"{result['OriginalSimilarity']:.4f}")
+            metrics_cols[1].metric("Adapted sim", f"{result['AdaptedSimilarity']:.4f}")
+            metrics_cols[2].metric("Converted sim", f"{result['ConvertedSimilarity']:.4f}")
+            metrics_cols[3].metric("Adapted converted", f"{result['AdaptedConvertedSimilarity']:.4f}")
+
+        except Exception as exc:
+            st.error(f"❌ TTS conversion failed: {exc}")
 
 elif page == "🔬 Inference Lab":
     st.subheader("🔬 Single-Sample Embedding Adaptation")

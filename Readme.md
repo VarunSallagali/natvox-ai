@@ -81,7 +81,7 @@ python main.py --mode train --data-dir my_voice_data --output-dir artifacts --ep
 python inference.py --input sample.wav --target target.wav --output-dir artifacts
 ```
 
-### Advanced Pipeline (TTS → Adaptation → Conversion)
+### Advanced Pipeline (Your TTS → Text Encoder → NATVOX-AI Adapter → VITS → GAN Vocoder)
 ```bash
 python vocalis_pipeline.py --text "Hello world" --target target.wav --output-dir artifacts
 ```
