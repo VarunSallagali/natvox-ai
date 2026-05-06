@@ -11,3 +11,5 @@ gTTS
 scikit-learn
 sounddevice
 pyttsx3
+resemblyzer
+webrtcvad
