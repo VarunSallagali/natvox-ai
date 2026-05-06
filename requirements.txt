@@ -4,6 +4,10 @@ numpy
 librosa
 matplotlib
 streamlit
-resemblyzer
 pydub
 scipy
+soundfile
+gTTS
+scikit-learn
+sounddevice
+pyttsx3

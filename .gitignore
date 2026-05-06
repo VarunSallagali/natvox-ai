@@ -27,6 +27,10 @@ sample.wav
 # Generated files
 loss_curve.png
 results.txt
+artifacts/**/*
+!artifacts/.gitkeep
+!artifacts/reports/.gitkeep
+!artifacts/experiment/.gitkeep
 
 # IDE files
 .vscode/
