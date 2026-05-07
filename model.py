@@ -20,8 +20,11 @@ class NATVOXAdapter(nn.Module):
         self.alpha = nn.Parameter(torch.tensor(0.5))
 
     def forward(self, x):
+        # Ensure input is normalized
+        x_norm = nn.functional.normalize(x, p=2, dim=-1)
+        
         # Layer 1
-        h1 = torch.relu(self.fc1(x))
+        h1 = torch.relu(self.fc1(x_norm))
         h1 = self.dropout(h1)
         h1 = self.ln1(h1)
 
@@ -33,8 +36,10 @@ class NATVOXAdapter(nn.Module):
         # Layer 3
         h3 = self.fc3(h2)
 
-        # Residual connection with learnable alpha
-        out = h3 + self.alpha * x
+        # Residual connection with learnable alpha (scaled by small factor to prevent regression)
+        # Alpha should be small to ensure we're transforming, not just returning input
+        residual_weight = torch.sigmoid(self.alpha) * 0.2  # Constrain to [0, 0.2]
+        out = h3 + residual_weight * x_norm
 
         # L2 normalization
         out = nn.functional.normalize(out, p=2, dim=-1)

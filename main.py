@@ -48,17 +48,7 @@ def save_graphs(history, metrics, output_dir):
     plt.savefig(output_dir / "loss_curve.png")
     plt.close()
 
-    plt.figure(figsize=(7, 5))
-    labels = ["Before", "After"]
-    values = [metrics["before_cosine"], metrics["after_cosine"]]
-    colors = ["#E67E22", "#27AE60"]
-    plt.bar(labels, values, color=colors)
-    plt.ylim(0.0, 1.0)
-    plt.ylabel("Cosine Similarity")
-    plt.title("Embedding Similarity Improvement")
-    plt.tight_layout()
-    plt.savefig(output_dir / "similarity_bar.png")
-    plt.close()
+
 
 
 def run_training(data_dir=None, output_dir="artifacts", epochs=50, batch_size=5):
@@ -93,7 +83,7 @@ def run_training(data_dir=None, output_dir="artifacts", epochs=50, batch_size=5)
             {
                 "metrics": metrics,
                 "history": history,
-                "data_dir": data_dir or "synthetic_fallback",
+                "data_dir": data_dir or "voice_data/my_pairs",
                 "epochs": epochs,
                 "batch_size": batch_size,
             },

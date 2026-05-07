@@ -260,10 +260,10 @@ elif page == "🎯 Voice Conversion":
                     st.write("### 🔊 Before & After")
                     player_col1, player_col2 = st.columns(2)
                     with player_col1:
-                        st.markdown("**Original Audio**")
+                        st.markdown("**Converted Audio**")
                         st.audio(audio_file_path)
                     with player_col2:
-                        st.markdown("**Converted Audio**")
+                        st.markdown("**Original Audio**")
                         st.audio(str(converted_audio_path))
 
                     download_col1, download_col2 = st.columns(2)
@@ -420,15 +420,9 @@ elif page == "📈 Results":
         st.write("**Dataset Source:**", payload.get("data_dir"))
 
         loss_curve = artifacts_dir / "loss_curve.png"
-        sim_bar = artifacts_dir / "similarity_bar.png"
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if loss_curve.exists():
-                st.image(str(loss_curve), caption="Loss Curves", use_column_width=True)
-        with col2:
-            if sim_bar.exists():
-                st.image(str(sim_bar), caption="Similarity Comparison", use_column_width=True)
+        if loss_curve.exists():
+            st.image(str(loss_curve), caption="Loss Curves", width=700)
 
         history = payload.get("history", {})
         if history.get("sim"):
@@ -516,7 +510,7 @@ elif page == "🧪 TTS Conversion":
                         mime="audio/wav",
                     )
             with output_cols[1]:
-                st.markdown("**Encoder / adapter input**")
+                st.markdown("**Output**")
                 st.audio(result["EnhancedSyntheticWav"])
                 with open(result["EnhancedSyntheticWav"], "rb") as f:
                     st.download_button(
@@ -525,36 +519,9 @@ elif page == "🧪 TTS Conversion":
                         file_name=Path(result["EnhancedSyntheticWav"]).name,
                         mime="audio/wav",
                     )
-            with output_cols[2]:
-                st.markdown("**VITS acoustic output**")
-                st.audio(result["ConvertedWav"])
-                with open(result["ConvertedWav"], "rb") as f:
-                    st.download_button(
-                        label="Download VITS output wav",
-                        data=f,
-                        file_name=Path(result["ConvertedWav"]).name,
-                        mime="audio/wav",
-                    )
-            with output_cols[3]:
-                st.markdown("**GAN vocoder output**")
-                st.audio(result["FinalConvertedWav"])
-                with open(result["FinalConvertedWav"], "rb") as f:
-                    st.download_button(
-                        label="Download final wav",
-                        data=f,
-                        file_name=Path(result["FinalConvertedWav"]).name,
-                        mime="audio/wav",
-                    )
 
             st.write("### 🎧 Target Audio")
             st.audio(result["TargetPath"])
-
-            st.write("### 📊 Similarity Metrics")
-            metrics_cols = st.columns(4)
-            metrics_cols[0].metric("Original sim", f"{result['OriginalSimilarity']:.4f}")
-            metrics_cols[1].metric("Adapted sim", f"{result['AdaptedSimilarity']:.4f}")
-            metrics_cols[2].metric("Converted sim", f"{result['ConvertedSimilarity']:.4f}")
-            metrics_cols[3].metric("Adapted converted", f"{result['AdaptedConvertedSimilarity']:.4f}")
 
         except Exception as exc:
             st.error(f"❌ TTS conversion failed: {exc}")
